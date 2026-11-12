@@ -1,103 +1,145 @@
 import re
 from typing import Dict, Any, List, Optional
+from backend.config import APP_NAME
 
-DEFAULT_HASHTAGS = [
-    "#Shorts",
-    "#ShortCutAI",
-    "#Mindset",
-    "#SelfImprovement",
-    "#ViralShorts",
-    "#Tips",
-    "#Motivation"
-]
-
-TOPIC_KEYWORDS = {
-    "habit": ["#Habits", "#AtomicHabits", "#BehaviorChange", "#BrainLoop"],
-    "brain": ["#Neuroscience", "#BrainHacks", "#CognitiveScience", "#PsychologyFacts"],
-    "mind": ["#Mindset", "#MentalModels", "#Focus", "#DeepWork"],
-    "trick": ["#LifeHacks", "#ProductivityHacks", "#SelfImprovement", "#SuccessTips"],
-    "learn": ["#Learning", "#VisualLearning", "#Whiteboard", "#Science"],
-    "ai": ["#AI", "#ArtificialIntelligence", "#Tech", "#Future"],
-    "business": ["#Business", "#Entrepreneur", "#Success", "#Money"],
-    "podcast": ["#Podcast", "#Interview", "#Mindset", "#Wisdom"]
+NICHE_PROFILES: Dict[str, Dict[str, Any]] = {
+    "gta6": {
+        "keywords": ["gta 6", "gta6", "gta vi", "vice city", "rockstar", "jason", "lucia", "grand theft auto"],
+        "hashtags": ["#Shorts", "#GTA6", "#GTAVI", "#RockstarGames", "#GamingShorts", "#Gameplay", "#ViralShorts", "#ShortCutAI"],
+        "tags": ["GTA 6", "GTA VI", "GTA 6 gameplay", "GTA 6 trailer", "Rockstar Games", "Vice City", "gaming shorts", "viral gaming", "PS5", "open world", "ShortCut AI"],
+        "emoji": "🎮🔥",
+        "fallback_title": "Insane GTA 6 Detail You Missed!",
+        "fallback_hook": "This GTA 6 detail is blowing everyone's mind!",
+        "fallback_summary": "Breaking down the craziest Rockstar Games details, secrets, and gameplay highlights.",
+        "niche_line": "🎮 Daily GTA 6 leaks, gameplay highlights, and viral gaming Shorts.",
+        "category": "Gaming",
+    },
+    "gaming": {
+        "keywords": ["gameplay", "gaming", "ps5", "xbox", "pc gaming", "fps", "clutch", "boss", "walkthrough", "mod", "mods", "gamer", "esports", "minecraft", "fortnite", "valorant", "call of duty"],
+        "hashtags": ["#Shorts", "#Gaming", "#GamingShorts", "#Gameplay", "#Gamer", "#ViralGaming", "#ViralShorts", "#ShortCutAI"],
+        "tags": ["gaming", "gaming shorts", "gameplay", "viral gaming", "insane gameplay", "funny gaming moments", "gamer", "ShortCut AI", "youtube shorts"],
+        "emoji": "🕹️⚡",
+        "fallback_title": "Insane Gameplay Moment!",
+        "fallback_hook": "You won't believe what just happened in this gameplay!",
+        "fallback_summary": "High-intensity gameplay highlights, hidden secrets, and epic moments in under 60 seconds.",
+        "niche_line": "🕹️ Epic gameplay clips, viral gaming highlights, and secrets daily.",
+        "category": "Gaming",
+    },
+    "mystery_crime": {
+        "keywords": ["mystery", "true crime", "unsolved", "crime", "detective", "murder", "disappeared", "suspect", "case", "investigation", "serial", "fbi", "cold case"],
+        "hashtags": ["#Shorts", "#TrueCrime", "#Mystery", "#Unsolved", "#CrimeStory", "#Documentary", "#ViralShorts", "#ShortCutAI"],
+        "tags": ["true crime", "unsolved mystery", "mystery shorts", "crime documentary", "scary stories", "cold case", "real mystery", "ShortCut AI"],
+        "emoji": "🕵️🔍",
+        "fallback_title": "The Unsolved Mystery Nobody Can Explain!",
+        "fallback_hook": "This real-life mystery still baffles investigators!",
+        "fallback_summary": "Uncovering the chilling clues and twists behind this true crime case in 60 seconds.",
+        "niche_line": "🕵️ Gripping true crime cases, mysteries, and unsolved stories daily.",
+        "category": "Entertainment",
+    },
+    "luxury": {
+        "keywords": ["luxury", "mansion", "supercar", "yacht", "private jet", "rolex", "bugatti", "lamborghini", "ferrari", "penthouse", "rich lifestyle", "net worth"],
+        "hashtags": ["#Shorts", "#Luxury", "#LuxuryLifestyle", "#Billionaire", "#RichLifestyle", "#Wealth", "#Success", "#ShortCutAI"],
+        "tags": ["luxury lifestyle", "billionaire lifestyle", "supercars", "luxury mansion", "rich lifestyle", "wealth", "millionaire", "ShortCut AI"],
+        "emoji": "💎🥂",
+        "fallback_title": "Inside a Billionaire's Luxury Lifestyle!",
+        "fallback_hook": "This is what extreme wealth really looks like!",
+        "fallback_summary": "Exploring ultra-luxury lifestyles, supercars, mansions, and how billionaires live.",
+        "niche_line": "💎 Daily luxury lifestyle, billionaire wealth, and dream setups.",
+        "category": "Entertainment",
+    },
+    "tech_ai": {
+        "keywords": ["ai", "artificial intelligence", "chatgpt", "openai", "robot", "coding", "software", "tech", "future", "algorithm", "nvidia", "apple"],
+        "hashtags": ["#Shorts", "#AI", "#Tech", "#ArtificialIntelligence", "#FutureTech", "#TechShorts", "#ViralShorts", "#ShortCutAI"],
+        "tags": ["AI", "artificial intelligence", "tech news", "future technology", "coding", "tech shorts", "viral tech", "ShortCut AI"],
+        "emoji": "🤖⚡",
+        "fallback_title": "This AI Tech Changes Everything!",
+        "fallback_hook": "This new AI breakthrough is moving faster than anyone predicted!",
+        "fallback_summary": "Breaking down the biggest AI and technology shifts in under 60 seconds.",
+        "niche_line": "🤖 Daily AI breakthroughs, tech insights, and future trends.",
+        "category": "Science & Technology",
+    },
+    "business": {
+        "keywords": ["business", "money", "entrepreneur", "billionaire", "millionaire", "startup", "investing", "wealth", "rich", "income", "ceo", "founder"],
+        "hashtags": ["#Shorts", "#Business", "#Entrepreneur", "#Wealth", "#Money", "#Success", "#Mindset", "#ShortCutAI"],
+        "tags": ["business", "entrepreneurship", "how to make money", "wealth mindset", "founder advice", "business shorts", "ShortCut AI"],
+        "emoji": "💰🚀",
+        "fallback_title": "The Harsh Truth About Wealth!",
+        "fallback_hook": "Most people miss this one rule about building wealth!",
+        "fallback_summary": "Actionable business lessons and founder secrets distilled into 60 seconds.",
+        "niche_line": "💰 Daily business rules, wealth lessons, and founder breakdowns.",
+        "category": "Education",
+    },
+    "mindset": {
+        "keywords": ["habit", "brain", "mind", "psychology", "dopamine", "discipline", "subconscious", "focus", "motivation", "neuroscience", "routine"],
+        "hashtags": ["#Shorts", "#Mindset", "#Psychology", "#Discipline", "#Habits", "#SelfImprovement", "#ViralShorts", "#ShortCutAI"],
+        "tags": ["mindset", "psychology facts", "discipline", "habit loops", "self improvement", "focus hacks", "motivation", "ShortCut AI"],
+        "emoji": "🧠⚡",
+        "fallback_title": "Insane Mindset Trick You Must Know!",
+        "fallback_hook": "Why does your brain fall into the same traps?",
+        "fallback_summary": "Decode the psychology behind focus, discipline, and habits in 60 seconds.",
+        "niche_line": "💡 Visual breakdowns, psychology facts, and mindset upgrades daily.",
+        "category": "Education",
+    },
 }
 
-BASE_SEO_TAGS = [
-    "shorts", "youtube shorts", "viral shorts", "mindset", "psychology",
-    "self improvement", "productivity", "storytelling", "daily shorts",
-    "podcast clips", "viral moments", "ShortCut AI"
-]
+GENERAL_VIRAL_PROFILE: Dict[str, Any] = {
+    "hashtags": ["#Shorts", "#Viral", "#Trending", "#MustWatch", "#Facts", "#ViralShorts", "#ShortCutAI"],
+    "tags": ["viral shorts", "trending", "must watch", "youtube shorts", "daily clips", "ShortCut AI"],
+    "emoji": "🔥🎬",
+    "fallback_title": "Wait Until You See This!",
+    "fallback_hook": "Wait until you hear what happens next!",
+    "fallback_summary": "The best high-retention highlight clipped in crisp 1080p.",
+    "niche_line": "🎬 New high-impact Shorts uploaded daily!",
+    "category": "Entertainment",
+}
+
+
+def detect_niche_profile(combined_text: str) -> Dict[str, Any]:
+    text_lower = combined_text.lower()
+    for key in ["gta6", "mystery_crime", "luxury", "gaming", "tech_ai", "business", "mindset"]:
+        profile = NICHE_PROFILES[key]
+        if any(kw in text_lower for kw in profile["keywords"]):
+            return profile
+    return GENERAL_VIRAL_PROFILE
+
 
 def generate_shorts_metadata(
     clip_text: str,
     base_title: str = "",
-    channel_name: Optional[str] = None
+    channel_name: Optional[str] = None,
+    source_filename: str = ""
 ) -> Dict[str, Any]:
-    """
-    Generates high-engagement YouTube Shorts metadata tailored for the user's connected channel:
-    - Punchy, high-CTR Title (< 60 chars with #Shorts)
-    - Rich, structured Description with hook, core takeaways, and CTA
-    - Curated Hashtags (#Shorts, #ShortCutAI, topic tags)
-    - Comprehensive SEO Search Tags
-    """
-    if not channel_name:
-        try:
-            from backend.modules.youtube_upload import get_youtube_uploader
-            profile = get_youtube_uploader().get_channel_profile()
-            ch = profile.get("name")
-            channel_name = ch if ch and ch != "Not Connected" else "this channel"
-        except Exception:
-            channel_name = "this channel"
+    name = channel_name or "My Channel"
+    combined_context = f"{base_title} {source_filename} {clip_text}"
+    profile = detect_niche_profile(combined_context)
 
-    # 1. Clean & Optimize Title
-    title = base_title.strip() if base_title else "Must-Watch Highlight!"
+    title = base_title.strip() if base_title else profile["fallback_title"]
     if not title.endswith("!") and not title.endswith("?"):
         title += "!"
 
-    # Append #Shorts to title if space permits (< 60 chars)
     if len(title) <= 50 and "#shorts" not in title.lower():
         title = f"{title} #Shorts"
 
-    # 2. Extract Topic Hashtags
-    text_lower = clip_text.lower()
-    custom_hashtags = list(DEFAULT_HASHTAGS)
+    hashtags_list = list(profile["hashtags"])
+    hashtags_str = " ".join(hashtags_list[:8])
 
-    for keyword, tags in TOPIC_KEYWORDS.items():
-        if keyword in text_lower:
-            for t in tags:
-                if t not in custom_hashtags:
-                    custom_hashtags.append(t)
+    seo_tags = list(profile["tags"])
 
-    hashtags_str = " ".join(custom_hashtags[:8])
+    sentences = [s.strip() for s in re.split(r'[.!?]+', (clip_text or "").strip()) if len(s.strip()) > 10]
+    hook_sentence = sentences[0] if sentences else profile["fallback_hook"]
+    summary_sentence = sentences[1] if len(sentences) > 1 else profile["fallback_summary"]
 
-    # 3. Build Topic-Aware Tags for YouTube Tag List
-    seo_tags = list(BASE_SEO_TAGS)
-    if channel_name and channel_name != "this channel":
-        seo_tags.insert(0, channel_name)
-    for word in ["dopamine", "routine", "cue", "reward", "discipline", "subconscious"]:
-        if word in text_lower and word not in seo_tags:
-            seo_tags.append(word)
-
-    # 4. Generate High-Retention Rich Description
-    sentences = [s.strip() for s in re.split(r'[.!?]+', clip_text.strip()) if len(s.strip()) > 10]
-    hook_sentence = sentences[0] if sentences else "Watch this key moment until the end!"
-    summary_sentence = sentences[1] if len(sentences) > 1 else "Broken down into a concise, high-impact Short."
-    takeaway_sentence = sentences[2] if len(sentences) > 2 else "Save this insight and share with someone who needs it."
-
-    description = f"""{hook_sentence}! ⚡
+    description = f"""{hook_sentence}! {profile['emoji']}
 
 {summary_sentence}
 
-Key Takeaways:
-• {takeaway_sentence}
-• Watch till the end for the complete punchline
-
-💡 Subscribe to {channel_name} for daily high-impact Shorts!
+{profile['niche_line']}
+👉 Subscribe for daily Shorts: @{name}
 
 {hashtags_str}
 
 ---
-Automated with ShortCut AI
+Created and scheduled automatically with {APP_NAME}.
 """
 
     return {
@@ -105,5 +147,5 @@ Automated with ShortCut AI
         "description": description.strip(),
         "hashtags": hashtags_str,
         "tags": seo_tags[:25],
-        "category": "Entertainment"
+        "category": profile["category"]
     }
