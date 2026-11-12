@@ -26,14 +26,35 @@ import {
   Layers,
   Link2,
   Search,
-  Key,
-  HelpCircle,
-  ShieldCheck,
-  AlertCircle,
-  Unlink
+  Type,
+  Film,
+  Bot,
+  Mic,
+  Volume2,
+  VolumeX,
+  Camera,
+  Cpu,
+  Activity,
+  MessageSquare,
+  Lock,
+  Radio,
+  Trash2,
+  Plus,
+  HardDrive,
+  Monitor
 } from 'lucide-react';
 
 const API_BASE = 'http://127.0.0.1:8000';
+
+const DEFAULT_SUBTITLE_STYLES = [
+  { id: 'hormozi', name: 'Hormozi Bold', description: 'Chunky Impact uppercase + yellow pop', preview_bg: '#111827', preview_text: '#FFFFFF', preview_accent: '#FFEA00', uppercase: true },
+  { id: 'mrbeast', name: 'MrBeast Pop', description: 'Giant Impact + neon green highlight', preview_bg: '#0f172a', preview_text: '#FFFFFF', preview_accent: '#33FF48', uppercase: true },
+  { id: 'tiktok_box', name: 'TikTok Pill Box', description: 'Dark contrast box + yellow focus', preview_bg: '#000000', preview_text: '#FFFFFF', preview_accent: '#FFEA00', uppercase: false },
+  { id: 'neon_cyan', name: 'Neon Cyber Cyan', description: 'Tech style glowing cyan word pop', preview_bg: '#082f49', preview_text: '#FFFFFF', preview_accent: '#00FFFF', uppercase: true },
+  { id: 'iman_clean', name: 'Creator Minimal', description: 'Clean sentence case + amber accent', preview_bg: '#1e293b', preview_text: '#F5F5F5', preview_accent: '#FFB838', uppercase: false },
+  { id: 'podcast_yellow', name: 'Cinema Yellow', description: 'Classic warm-yellow film captions', preview_bg: '#18181b', preview_text: '#FFE026', preview_accent: '#FFE026', uppercase: false },
+  { id: 'red_hook', name: 'Red Alert Hook', description: 'Bold white + crimson red hook pop', preview_bg: '#2a0a0a', preview_text: '#FFFFFF', preview_accent: '#FF3B3B', uppercase: true },
+];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -47,24 +68,12 @@ export default function App() {
     top_clips: [],
     upcoming_scheduled: [],
     channel_info: {
-      name: 'Not Connected',
-      handle: '',
-      thumbnail: '',
-      configured: false,
-      authenticated: false,
-      status: 'not_connected',
-      mode: 'simulation',
+      name: 'PDX',
+      status: 'connected',
+      mode: 'live',
       target_url: 'https://studio.youtube.com'
     }
   });
-
-  // Channel Setup & Connect Wizard State
-  const [showConnectModal, setShowConnectModal] = useState(false);
-  const [secretsJsonInput, setSecretsJsonInput] = useState('');
-  const [authUrl, setAuthUrl] = useState('');
-  const [isSavingSecrets, setIsSavingSecrets] = useState(false);
-  const [isConnectingAuth, setIsConnectingAuth] = useState(false);
-  const [connectMessage, setConnectMessage] = useState(null);
 
   const [videos, setVideos] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
@@ -79,6 +88,8 @@ export default function App() {
   const [scheduleStartNow, setScheduleStartNow] = useState(true);
   const [customStartTime, setCustomStartTime] = useState('');
   const [batchLayoutMode, setBatchLayoutMode] = useState('auto');
+  const [batchSubtitleStyle, setBatchSubtitleStyle] = useState('hormozi');
+  const [batchQualityPreset, setBatchQualityPreset] = useState('high');
   const [batchForceRerender, setBatchForceRerender] = useState(false);
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
   const [batchProgressText, setBatchProgressText] = useState('');
@@ -102,16 +113,419 @@ export default function App() {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editLayout, setEditLayout] = useState('auto');
+  const [editSubtitleStyle, setEditSubtitleStyle] = useState('hormozi');
+  const [editQualityPreset, setEditQualityPreset] = useState('high');
+  const [subtitleStyles, setSubtitleStyles] = useState(DEFAULT_SUBTITLE_STYLES);
   const [singleScheduleTime, setSingleScheduleTime] = useState('');
   const [renderingClipId, setRenderingClipId] = useState(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [privacyStatus, setPrivacyStatus] = useState('public');
+  const [isGeneratingMetadata, setIsGeneratingMetadata] = useState(false);
+
+  // YouTube Discovery State
+  const [discoverQuery, setDiscoverQuery] = useState('millionaire mindset discipline success habits speech interview');
+  const [discoverMinMinutes, setDiscoverMinMinutes] = useState(5);
+  const [discoverSortBy, setDiscoverSortBy] = useState('clip_potential');
+  const [discoverPresets, setDiscoverPresets] = useState([
+    { id: 'millionaire_mindset', name: '💰 Motivation & Millionaire Mindset', query: 'millionaire mindset discipline success habits speech interview' },
+    { id: 'podcast_clips', name: '🎙️ Podcast Clips', query: 'podcast full episode best moments interview life advice' },
+    { id: 'luxury_lifestyle', name: '💎 Luxury & Rich Lifestyle', query: 'billionaire luxury lifestyle supercars mansion tour wealth secrets' },
+    { id: 'mystery_crime', name: '🕵️ Mystery & True Crime', query: 'unsolved mystery true crime documentary story explained' },
+    { id: 'ai_future', name: '🤖 AI & Future Technology', query: 'AI future technology breakthrough explained podcast' },
+    { id: 'psychology', name: '🧠 Psychology & Human Behaviour', query: 'human psychology dark psychology behaviour facts lecture' },
+    { id: 'gta6_gaming', name: '🎮 GTA 6 & Gaming Hype', query: 'GTA 6 trailer breakdown hidden details gameplay secrets' },
+  ]);
+  const [discoverResults, setDiscoverResults] = useState([]);
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [discoverStats, setDiscoverStats] = useState(null);
+
+  // J.A.R.V.I.S. AI Co-Pilot & System State
+  const [jarvisMessages, setJarvisMessages] = useState([
+    {
+      role: 'jarvis',
+      text: 'Good day, sir. J.A.R.V.I.S. is online and linked to ViralCut AI and your workstation. I can control your rendering pipelines, manage volume, capture screenshots, run custom routines, or monitor your hardware. What are your orders?',
+      time: 'ONLINE'
+    }
+  ]);
+  const [jarvisInput, setJarvisInput] = useState('');
+  const [isJarvisListening, setIsJarvisListening] = useState(false);
+  const [jarvisStatus, setJarvisStatus] = useState('STANDBY • READY');
+  const [jarvisVitals, setJarvisVitals] = useState(null);
+  const [jarvisCommands, setJarvisCommands] = useState([]);
+  const [showJarvisFloating, setShowJarvisFloating] = useState(false);
+  const [jarvisVoiceOutput, setJarvisVoiceOutput] = useState(true);
 
   useEffect(() => {
     fetchAnalytics();
     fetchVideos();
     fetchYouTubeUploads();
+    fetchSubtitleStyles();
+    fetchDiscoverPresets();
+    fetchJarvisCommands();
+    fetchJarvisVitals();
+
+    const vitalsTimer = setInterval(fetchJarvisVitals, 4000);
+    return () => clearInterval(vitalsTimer);
   }, []);
+
+  const fetchJarvisVitals = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/jarvis/vitals`);
+      if (res.ok) {
+        const data = await res.json();
+        setJarvisVitals(data);
+      }
+    } catch (e) {
+      // Background poll fail silent
+    }
+  };
+
+  const fetchJarvisCommands = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/jarvis/commands`);
+      if (res.ok) {
+        const data = await res.json();
+        setJarvisCommands(data.commands || []);
+      }
+    } catch (e) {
+      console.error('Failed to load Jarvis commands:', e);
+    }
+  };
+
+  const speakJarvisTTS = (text) => {
+    if (!jarvisVoiceOutput) return;
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const cleanText = text.replace(/[*_#`~[\]]/g, '').slice(0, 320);
+    const utter = new SpeechSynthesisUtterance(cleanText);
+    utter.rate = 1.05;
+    utter.pitch = 0.95;
+    const voices = window.speechSynthesis.getVoices();
+    const bestVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Male') || v.name.includes('David') || v.name.includes('George') || v.name.includes('Natural') || v.name.includes('Google US English')));
+    if (bestVoice) utter.voice = bestVoice;
+    utter.onstart = () => setJarvisStatus('TRANSMITTING VOICE...');
+    utter.onend = () => setJarvisStatus('STANDBY • READY');
+    window.speechSynthesis.speak(utter);
+  };
+
+  const handleJarvisSend = async (overrideText = null) => {
+    const textToSend = (overrideText !== null ? overrideText : jarvisInput).trim();
+    if (!textToSend) return;
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setJarvisMessages(prev => [...prev, { role: 'user', text: textToSend, time: timeStr }]);
+    if (overrideText === null) setJarvisInput('');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/jarvis/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: textToSend,
+          context: {
+            active_tab: activeTab,
+            total_clips: clips.length,
+            total_uploads: uploads.length,
+            target_channel: 'PDX',
+            current_quality: editQualityPreset
+          }
+        })
+      });
+      const data = await res.json();
+      const reply = data.response || "Understood, sir.";
+      const jarvisTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      setJarvisMessages(prev => [
+        ...prev,
+        {
+          role: 'jarvis',
+          text: reply,
+          time: jarvisTime,
+          imgUrl: data.directive?.url || null
+        }
+      ]);
+      speakJarvisTTS(reply);
+
+      // Handle Directives from Jarvis
+      if (data.directive) {
+        const d = data.directive;
+        if (d.trigger_action === 'switch_tab' && d.action_param) {
+          setActiveTab(d.action_param);
+        } else if (d.trigger_action === 'open_batch_scheduler') {
+          selectAllClips();
+          if (d.action_param) setScheduleInterval(parseInt(d.action_param));
+          setShowScheduleModal(true);
+        } else if (d.trigger_action === 'run_discovery' && d.query) {
+          setActiveTab('discover');
+          handleRunDiscovery(d.query);
+        } else if (d.quality) {
+          setEditQualityPreset(d.value);
+        } else if (d.subtitle) {
+          setEditSubtitleStyle(d.value);
+        }
+      }
+    } catch (err) {
+      setJarvisMessages(prev => [
+        ...prev,
+        { role: 'jarvis', text: `Comms interface error: ${err.message}`, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+      ]);
+    }
+  };
+
+  const toggleJarvisMic = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Speech recognition is not supported in this browser. Please use Chrome, Edge, or type your message.');
+      return;
+    }
+    if (isJarvisListening) {
+      setIsJarvisListening(false);
+      setJarvisStatus('STANDBY • READY');
+      return;
+    }
+
+    try {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const rec = new SpeechRec();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.lang = 'en-US';
+
+      rec.onstart = () => {
+        setIsJarvisListening(true);
+        setJarvisStatus('LISTENING FOR YOUR COMMAND, SIR...');
+      };
+
+      rec.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        setIsJarvisListening(false);
+        setJarvisStatus('PROCESSING...');
+        handleJarvisSend(transcript);
+      };
+
+      rec.onerror = () => {
+        setIsJarvisListening(false);
+        setJarvisStatus('STANDBY • READY');
+      };
+
+      rec.onend = () => {
+        setIsJarvisListening(false);
+        setJarvisStatus('STANDBY • READY');
+      };
+
+      rec.start();
+    } catch (e) {
+      setIsJarvisListening(false);
+      setJarvisStatus('STANDBY • READY');
+    }
+  };
+
+  const executeJarvisDirectAction = async (action, target = null) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/jarvis/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: action, target: target })
+      });
+      const data = await res.json();
+      const reply = data.message || `Executed ${action}, sir.`;
+      setJarvisMessages(prev => [
+        ...prev,
+        { role: 'jarvis', text: reply, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), imgUrl: data.data?.url || null }
+      ]);
+      speakJarvisTTS(reply);
+    } catch (e) {
+      alert(`Action error: ${e.message}`);
+    }
+  };
+
+  const executeJarvisCustomMacro = async (cmdId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/jarvis/commands/${cmdId}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ analytics: analytics })
+      });
+      const data = await res.json();
+      setJarvisMessages(prev => [
+        ...prev,
+        { role: 'jarvis', text: data.response, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+      ]);
+      speakJarvisTTS(data.response);
+
+      if (data.directive) {
+        const d = data.directive;
+        if (d.trigger_action === 'switch_tab' && d.action_param) setActiveTab(d.action_param);
+        if (d.trigger_action === 'open_batch_scheduler') { selectAllClips(); setShowScheduleModal(true); }
+      }
+    } catch (e) {
+      alert(`Macro execution error: ${e.message}`);
+    }
+  };
+
+  const handleCreateJarvisMacro = async () => {
+    const phrase = prompt("Enter the voice or text trigger phrase you will say (e.g., 'start work', 'cleanup', 'render all'):");
+    if (!phrase) return;
+    const desc = prompt("Describe what this custom routine does:", `Custom macro for ${phrase}`);
+
+    const newCmd = {
+      name: phrase.toUpperCase(),
+      triggers: [phrase.toLowerCase().trim()],
+      description: desc || "Custom user macro",
+      enabled: true,
+      actions: [
+        { type: "speak", message: `Protocol ${phrase} activated, sir.` }
+      ]
+    };
+
+    try {
+      await fetch(`${API_BASE}/api/jarvis/commands`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCmd)
+      });
+      fetchJarvisCommands();
+      const confirmReply = `Custom routine '${phrase}' registered in J.A.R.V.I.S. database, sir.`;
+      setJarvisMessages(prev => [
+        ...prev,
+        { role: 'jarvis', text: confirmReply, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+      ]);
+      speakJarvisTTS(confirmReply);
+    } catch (e) {
+      alert(`Failed to create macro: ${e.message}`);
+    }
+  };
+
+  const handleDeleteJarvisMacro = async (cmdId) => {
+    if (!confirm('Are you sure you want to remove this custom macro routine?')) return;
+    try {
+      await fetch(`${API_BASE}/api/jarvis/commands/${cmdId}`, { method: 'DELETE' });
+      fetchJarvisCommands();
+    } catch (e) {
+      alert(`Delete error: ${e.message}`);
+    }
+  };
+
+  const fetchDiscoverPresets = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/youtube/discover/presets`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.presets && data.presets.length > 0) {
+          setDiscoverPresets(data.presets);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load discovery presets:', err);
+    }
+  };
+
+  const handleRunDiscovery = async (overrideQuery = null) => {
+    const q = (overrideQuery !== null ? overrideQuery : discoverQuery).trim();
+    if (!q) return;
+    if (overrideQuery !== null) setDiscoverQuery(overrideQuery);
+    setIsDiscovering(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/youtube/discover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: q,
+          min_duration_minutes: parseInt(discoverMinMinutes) || 5,
+          max_duration_minutes: 150,
+          max_results: 12,
+          sort_by: discoverSortBy
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Discovery search failed');
+      }
+      const data = await res.json();
+      setDiscoverResults(data.videos || []);
+      setDiscoverStats({ total_scanned: data.total_scanned, qualified_count: data.qualified_count });
+    } catch (err) {
+      alert(`Discovery error: ${err.message}`);
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
+  const handleDiscoverImportAndClip = async (videoItem, autoStart = true) => {
+    setYoutubeUrl(videoItem.url);
+    setYoutubeResolution('1080p');
+    setUploadMode('youtube');
+    setActiveTab('upload');
+
+    if (!autoStart) {
+      setIsInspecting(true);
+      setYoutubeMetadata(null);
+      try {
+        const res = await fetch(`${API_BASE}/api/videos/youtube-inspect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: videoItem.url })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          setYoutubeMetadata(data);
+          if (data.available_resolutions?.length > 0) {
+            setYoutubeResolution(data.available_resolutions.includes('1080p') ? '1080p' : data.available_resolutions[0]);
+          }
+        }
+      } finally {
+        setIsInspecting(false);
+      }
+      return;
+    }
+
+    // Auto-start 1080p download & AI story extraction
+    setIsProcessing(true);
+    setUploadProgress(15);
+    const initialStatus = `Downloading 1080p "${videoItem.title.slice(0, 45)}..." for AI clipping...`;
+    setProcessingStatus(initialStatus);
+    setActiveJob({
+      type: 'youtube',
+      title: videoItem.title,
+      percent: 15,
+      stepIndex: 1,
+      statusText: initialStatus
+    });
+
+    try {
+      const res = await fetch(`${API_BASE}/api/videos/youtube-download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: videoItem.url, resolution: '1080p' })
+      });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'YouTube download failed');
+      }
+      const data = await res.json();
+      setUploadProgress(35);
+      setProcessingStatus('Downloaded! Starting Whisper AI transcription...');
+      setActiveJob(prev => prev ? { ...prev, percent: 35, stepIndex: 2, statusText: 'Downloaded! Starting Whisper AI transcription...' } : null);
+      startPipelinePolling(data.video.id, videoItem.title);
+    } catch (err) {
+      setIsProcessing(false);
+      setActiveJob(null);
+      alert(`Auto-Import failed: ${err.message}`);
+    }
+  };
+
+  const fetchSubtitleStyles = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/subtitle-styles`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.styles && data.styles.length > 0) {
+          setSubtitleStyles(data.styles);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load subtitle styles:', err);
+    }
+  };
 
   const fetchAnalytics = async () => {
     try {
@@ -179,93 +593,14 @@ export default function App() {
     }
   };
 
-  // Channel Setup & Connect Handlers
-  const handleSaveClientSecrets = async () => {
-    if (!secretsJsonInput.trim()) return;
-    setIsSavingSecrets(true);
-    setConnectMessage(null);
-    try {
-      const res = await fetch(`${API_BASE}/api/youtube/credentials`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ client_secrets_json: secretsJsonInput.trim() })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Failed to save credentials');
-      setConnectMessage({ type: 'success', text: `Credentials saved (${data.client_type})! Now click "Authorize YouTube Channel" below.` });
-      await fetchAnalytics();
-    } catch (err) {
-      setConnectMessage({ type: 'error', text: err.message });
-    } finally {
-      setIsSavingSecrets(false);
-    }
-  };
-
-  const handleSecretsFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      setSecretsJsonInput(evt.target.result);
-    };
-    reader.readAsText(file);
-  };
-
-  const handleStartConnectAuth = async () => {
-    setIsConnectingAuth(true);
-    setConnectMessage(null);
-    setAuthUrl('');
-    try {
-      const res = await fetch(`${API_BASE}/api/youtube/connect`, { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || 'Could not start YouTube authorization');
-      setAuthUrl(data.auth_url);
-      window.open(data.auth_url, '_blank');
-
-      // Poll until authenticated
-      const pollAuth = setInterval(async () => {
-        try {
-          const stRes = await fetch(`${API_BASE}/api/youtube/status`);
-          if (stRes.ok) {
-            const st = await stRes.json();
-            if (st.authenticated) {
-              clearInterval(pollAuth);
-              setIsConnectingAuth(false);
-              setAuthUrl('');
-              setConnectMessage({ type: 'success', text: `Connected to YouTube Channel: ${st.channel?.name || 'Your Channel'}!` });
-              await fetchAnalytics();
-            } else if (!st.auth_in_progress && st.last_auth_error) {
-              clearInterval(pollAuth);
-              setIsConnectingAuth(false);
-              setConnectMessage({ type: 'error', text: `Auth error: ${st.last_auth_error}` });
-            }
-          }
-        } catch (err) {
-          console.error('Auth poll error:', err);
-        }
-      }, 1500);
-    } catch (err) {
-      setIsConnectingAuth(false);
-      setConnectMessage({ type: 'error', text: err.message });
-    }
-  };
-
-  const handleDisconnectChannel = async () => {
-    if (!window.confirm('Disconnect the current YouTube channel? You can reconnect another channel anytime.')) return;
-    try {
-      await fetch(`${API_BASE}/api/youtube/disconnect`, { method: 'POST' });
-      setConnectMessage({ type: 'success', text: 'Channel disconnected. Ready to connect a new channel.' });
-      await fetchAnalytics();
-    } catch (err) {
-      alert('Disconnect failed: ' + err.message);
-    }
-  };
-
   const selectClipForPreview = (clip) => {
     setSelectedClip(clip);
     setEditTitle(clip.title || '');
     setEditDescription(clip.description || '');
     setEditLayout(clip.layout_mode || 'auto');
+    if (clip.subtitle_style) {
+      setEditSubtitleStyle(clip.subtitle_style);
+    }
   };
 
   // Checkbox selection helpers
@@ -528,11 +863,20 @@ export default function App() {
   const handleRenderShort = async (clipId, customLayout = null) => {
     setRenderingClipId(clipId);
     const layout = customLayout || editLayout;
+    const subStyle = editSubtitleStyle || 'hormozi';
+    const quality = editQualityPreset || 'high';
     try {
       const res = await fetch(`${API_BASE}/api/clips/${clipId}/render`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ layout_mode: layout, include_subtitles: true })
+        body: JSON.stringify({
+          layout_mode: layout,
+          include_subtitles: subStyle !== 'none',
+          subtitle_style: subStyle,
+          quality_preset: quality,
+          custom_title: editTitle,
+          custom_description: editDescription
+        })
       });
       if (!res.ok) throw new Error('Render failed');
       const data = await res.json();
@@ -541,11 +885,65 @@ export default function App() {
       selectClipForPreview(updated);
       setClips(prev => prev.map(c => c.id === clipId ? updated : c));
       fetchAnalytics();
-      alert(`Short rendered successfully in 9:16 format with burned-in subtitles!`);
+      alert(`Short rendered in 1080p Full HD (${quality.toUpperCase()}) with '${subStyle}' subtitles!`);
     } catch (err) {
       alert(`Render error: ${err.message}`);
     } finally {
       setRenderingClipId(null);
+    }
+  };
+
+  // Generate / Enrich Metadata from YouTube Source & Video Entities
+  const handleGenerateEnrichedMetadata = async () => {
+    if (!selectedClip) return;
+    setIsGeneratingMetadata(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/clips/${selectedClip.id}/generate-metadata`, {
+        method: 'POST'
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Metadata generation failed');
+      }
+      const data = await res.json();
+      if (data.metadata) {
+        setEditTitle(data.metadata.title);
+        setEditDescription(data.metadata.description);
+        const updated = data.clip;
+        setClips(prev => prev.map(c => c.id === selectedClip.id ? updated : c));
+        setSelectedClip(updated);
+        const entityNotice = data.metadata.entities_found?.length > 0
+          ? `Identified in video: ${data.metadata.entities_found.join(', ')}`
+          : `Synthesized for topic: ${data.metadata.topic_label || 'High Impact'}`;
+        alert(`✨ Success! PDX High-Engagement Description & Hashtags generated with YouTube details and video context.\n${entityNotice}`);
+      }
+    } catch (err) {
+      alert(`Enrich error: ${err.message}`);
+    } finally {
+      setIsGeneratingMetadata(false);
+    }
+  };
+
+  // Save Metadata Only (without re-rendering video)
+  const handleSaveMetadataOnly = async () => {
+    if (!selectedClip) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/clips/${selectedClip.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: editTitle,
+          description: editDescription
+        })
+      });
+      if (!res.ok) throw new Error('Failed to save metadata');
+      const data = await res.json();
+      const updated = data.clip;
+      setClips(prev => prev.map(c => c.id === selectedClip.id ? updated : c));
+      setSelectedClip(updated);
+      alert('Title and High-Engagement Description saved successfully!');
+    } catch (err) {
+      alert(`Save error: ${err.message}`);
     }
   };
 
@@ -569,31 +967,14 @@ export default function App() {
 
   // Single YouTube Upload Handler
   const handlePublishYouTube = async (clipId, scheduledAt = null) => {
-    const clip = clips.find(c => c.id === clipId) || selectedClip;
-    const clipTitle = clip ? clip.title : 'Short';
-    const channelName = analytics.channel_info?.name || 'Your Channel';
-
     setIsPublishing(true);
-    setActiveJob({
-      type: 'youtube_publish',
-      title: clipTitle,
-      statusText: `Preparing to upload "${clipTitle}" to ${channelName}...`,
-      percent: 30
-    });
-
     try {
       const payload = {
         privacy_status: scheduledAt ? 'private' : privacyStatus,
-        custom_title: editTitle || (clip ? clip.title : null),
-        custom_description: editDescription || (clip ? clip.description : null),
+        custom_title: editTitle,
+        custom_description: editDescription,
         publish_at: scheduledAt || (singleScheduleTime ? new Date(singleScheduleTime).toISOString() : null)
       };
-
-      setActiveJob(prev => prev ? {
-        ...prev,
-        percent: 65,
-        statusText: `Uploading "${clipTitle}" via YouTube Data API v3...`
-      } : null);
 
       const res = await fetch(`${API_BASE}/api/clips/${clipId}/upload-youtube`, {
         method: 'POST',
@@ -605,11 +986,6 @@ export default function App() {
         throw new Error(errJson.detail || 'YouTube publish failed');
       }
       const data = await res.json();
-      setActiveJob(prev => prev ? {
-        ...prev,
-        percent: 100,
-        statusText: `Published! Video ID: ${data.upload?.youtube_video_id || 'Done'}`
-      } : null);
       alert(`Published! YouTube URL: ${data.upload.youtube_url}${payload.publish_at ? ` (Scheduled for ${payload.publish_at})` : ''}`);
       fetchYouTubeUploads();
       fetchAnalytics();
@@ -617,11 +993,10 @@ export default function App() {
       alert(`Publish error: ${err.message}`);
     } finally {
       setIsPublishing(false);
-      setTimeout(() => setActiveJob(null), 3500);
     }
   };
 
-  // Batch Upload & Schedule Handler with Per-Clip Live Queue Progress
+  // Batch Upload & Schedule Handler
   const handleBatchScheduleSubmit = async (customClipIds = null) => {
     const idsToUpload = customClipIds || (selectedClipIds.length > 0 ? selectedClipIds : clips.map(c => c.id));
     if (idsToUpload.length === 0) {
@@ -630,118 +1005,41 @@ export default function App() {
     }
 
     setIsBatchPublishing(true);
+    setBatchProgressText(`Uploading & scheduling ${idsToUpload.length} videos at ${scheduleInterval}-minute intervals...`);
     setBatchResults(null);
-    const totalClips = idsToUpload.length;
-    const channelName = analytics.channel_info?.name || 'YouTube';
 
-    const subItems = idsToUpload.map((id, idx) => {
-      const c = clips.find(clip => clip.id === id);
-      return {
-        id,
-        title: c ? c.title : `Short #${idx + 1}`,
-        status: 'pending'
-      };
-    });
+    try {
+      const res = await fetch(`${API_BASE}/api/youtube/batch-upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clip_ids: idsToUpload,
+          interval_minutes: parseInt(scheduleInterval) || 30,
+          start_now: scheduleStartNow,
+          privacy_status: privacyStatus,
+          custom_start_time: customStartTime ? new Date(customStartTime).toISOString() : null,
+          layout_mode: batchLayoutMode,
+          subtitle_style: batchSubtitleStyle,
+          quality_preset: batchQualityPreset,
+          force_rerender: batchForceRerender
+        })
+      });
 
-    setActiveJob({
-      type: 'youtube_batch',
-      title: `Batch Publishing ${totalClips} Shorts to ${channelName}`,
-      statusText: `Initializing release queue (interval: ${scheduleInterval}m)...`,
-      percent: 5,
-      subItems
-    });
-    setBatchProgressText(`Starting upload sequence for ${totalClips} Shorts...`);
-
-    const intervalMinutes = parseInt(scheduleInterval) || 30;
-    const startDt = customStartTime ? new Date(customStartTime) : new Date();
-    const results = [];
-    const errors = [];
-
-    for (let i = 0; i < idsToUpload.length; i++) {
-      const clipId = idsToUpload[i];
-      const clip = clips.find(c => c.id === clipId);
-      const clipTitle = clip ? clip.title : `Short #${i + 1}`;
-
-      subItems[i].status = 'uploading';
-      const pct = Math.round((i / totalClips) * 100);
-      const statusMsg = `[${i + 1}/${totalClips}] Preparing "${clipTitle}"...`;
-      setBatchProgressText(statusMsg);
-      setActiveJob(prev => prev ? {
-        ...prev,
-        title: `Uploading [${i + 1}/${totalClips}]: ${clipTitle}`,
-        statusText: statusMsg,
-        percent: Math.max(pct, 5),
-        subItems: [...subItems]
-      } : null);
-
-      try {
-        let publishAtStr = null;
-        if (!scheduleStartNow || i > 0) {
-          const delayMinutes = (scheduleStartNow ? i : (i + 1)) * intervalMinutes;
-          const clipPublishDt = new Date(startDt.getTime() + delayMinutes * 60000);
-          publishAtStr = clipPublishDt.toISOString();
-        }
-
-        if (!clip || !clip.output_path || batchForceRerender) {
-          const renderMsg = `[${i + 1}/${totalClips}] Rendering 9:16 layout (${batchLayoutMode}) for "${clipTitle}"...`;
-          setBatchProgressText(renderMsg);
-          setActiveJob(prev => prev ? { ...prev, statusText: renderMsg, subItems: [...subItems] } : null);
-
-          const renderRes = await fetch(`${API_BASE}/api/clips/${clipId}/render`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ layout_mode: batchLayoutMode, include_subtitles: true })
-          });
-          if (!renderRes.ok) {
-            const errR = await renderRes.json();
-            throw new Error(errR.detail || 'Render failed');
-          }
-        }
-
-        const uploadMsg = `[${i + 1}/${totalClips}] Uploading "${clipTitle}" to ${channelName}...`;
-        setBatchProgressText(uploadMsg);
-        setActiveJob(prev => prev ? { ...prev, statusText: uploadMsg, subItems: [...subItems] } : null);
-
-        const upRes = await fetch(`${API_BASE}/api/clips/${clipId}/upload-youtube`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            privacy_status: publishAtStr ? 'private' : privacyStatus,
-            custom_title: clip ? clip.title : null,
-            custom_description: clip ? clip.description : null,
-            publish_at: publishAtStr
-          })
-        });
-
-        if (!upRes.ok) {
-          const errU = await upRes.json();
-          throw new Error(errU.detail || 'Upload failed');
-        }
-
-        const upData = await upRes.json();
-        subItems[i].status = 'completed';
-        results.push(upData.upload);
-      } catch (err) {
-        subItems[i].status = 'failed';
-        errors.push({ clip_id: clipId, title: clipTitle, error: err.message });
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || 'Batch schedule upload failed');
       }
 
-      const donePct = Math.round(((i + 1) / totalClips) * 100);
-      setActiveJob(prev => prev ? { ...prev, percent: donePct, subItems: [...subItems] } : null);
+      const data = await res.json();
+      setBatchResults(data);
+      fetchYouTubeUploads();
+      fetchAnalytics();
+      setBatchProgressText(`Successfully processed ${data.scheduled_count} videos!`);
+    } catch (err) {
+      alert(`Batch upload error: ${err.message}`);
+    } finally {
+      setIsBatchPublishing(false);
     }
-
-    setBatchResults({
-      scheduled_count: results.length,
-      error_count: errors.length,
-      results,
-      errors
-    });
-    setBatchProgressText(`Completed: ${results.length} uploaded/scheduled, ${errors.length} failed.`);
-    await fetchYouTubeUploads();
-    await fetchAnalytics();
-    setIsBatchPublishing(false);
-
-    setTimeout(() => setActiveJob(null), 4500);
   };
 
   // Helper to preview schedule timeline dates
@@ -769,10 +1067,10 @@ export default function App() {
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
-          <div className="logo-badge" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' }}>SC</div>
+          <div className="logo-badge">PDX</div>
           <div className="logo-text">
-            <h1>ShortCut AI</h1>
-            <span>Shorts Studio • AI Auto-Publisher</span>
+            <h1>ViralCut AI</h1>
+            <span>PDX Shorts Studio</span>
           </div>
         </div>
 
@@ -791,6 +1089,14 @@ export default function App() {
           >
             <Upload size={18} />
             <span>New Project</span>
+          </div>
+
+          <div
+            className={`nav-item ${activeTab === 'discover' ? 'active' : ''}`}
+            onClick={() => setActiveTab('discover')}
+          >
+            <Search size={18} />
+            <span>Discover Videos</span>
           </div>
 
           <div
@@ -816,22 +1122,26 @@ export default function App() {
             <Youtube size={18} />
             <span>Publish History ({uploads.length})</span>
           </div>
+
+          <div
+            className={`nav-item ${activeTab === 'jarvis' ? 'active' : ''}`}
+            onClick={() => setActiveTab('jarvis')}
+            style={{
+              background: activeTab === 'jarvis' ? 'rgba(6, 182, 212, 0.16)' : 'transparent',
+              borderColor: activeTab === 'jarvis' ? '#22d3ee' : 'transparent',
+              color: activeTab === 'jarvis' ? '#67e8f9' : 'inherit'
+            }}
+          >
+            <Bot size={18} color="#22d3ee" />
+            <span style={{ fontWeight: 700, letterSpacing: '0.4px' }}>J.A.R.V.I.S. AI</span>
+            <span style={{ marginLeft: 'auto', background: 'rgba(34, 211, 238, 0.2)', color: '#38bdf8', padding: '1px 6px', borderRadius: 10, fontSize: 10, fontWeight: 800 }}>LIVE</span>
+          </div>
         </nav>
 
         <div className="sidebar-footer">
-          <div
-            className="hardware-pill"
-            onClick={() => setShowConnectModal(true)}
-            style={{ cursor: 'pointer' }}
-            title="Click to connect or manage your YouTube channel"
-          >
-            <div className="hardware-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span>Channel: {analytics.channel_info?.name || 'Not Connected'}</span>
-              <Key size={12} color="#60a5fa" />
-            </div>
-            <div className="hardware-spec">
-              {analytics.channel_info?.status === 'connected' ? '✓ YouTube Connected • Live Upload' : '⚠️ Setup Required • Click to Connect'}
-            </div>
+          <div className="hardware-pill">
+            <div className="hardware-title">Channel: PDX</div>
+            <div className="hardware-spec">YouTube Connected • Live Upload</div>
           </div>
         </div>
       </aside>
@@ -844,99 +1154,32 @@ export default function App() {
           {activeTab === 'dashboard' && (
             <div>
               {/* Channel Connection Banner */}
-              <div
-                className="channel-banner"
-                style={{
-                  border: analytics.channel_info?.status === 'connected'
-                    ? '1px solid rgba(16, 185, 129, 0.4)'
-                    : '1px solid rgba(249, 115, 22, 0.4)'
-                }}
-              >
+              <div className="channel-banner">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                  {analytics.channel_info?.thumbnail ? (
-                    <img
-                      src={analytics.channel_info.thumbnail}
-                      alt="Channel avatar"
-                      style={{ width: 48, height: 48, borderRadius: 12, objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 12,
-                        background: analytics.channel_info?.status === 'connected'
-                          ? 'linear-gradient(135deg, #10b981, #059669)'
-                          : 'linear-gradient(135deg, #f97316, #ef4444)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 20,
-                        fontWeight: 800,
-                        color: '#fff'
-                      }}
-                    >
-                      {analytics.channel_info?.name && analytics.channel_info.name !== 'Not Connected'
-                        ? analytics.channel_info.name.slice(0, 2).toUpperCase()
-                        : 'SC'}
-                    </div>
-                  )}
+                  <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #ef4444, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff' }}>
+                    PDX
+                  </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <h2 style={{ fontSize: 18, fontWeight: 800 }}>
-                        {analytics.channel_info?.status === 'connected'
-                          ? `YouTube Channel: ${analytics.channel_info.name}`
-                          : 'YouTube Channel: Setup Required'}
-                      </h2>
-                      {analytics.channel_info?.status === 'connected' ? (
-                        <span className="badge-live">
-                          <span className="pulsing-dot"></span> Live API Connected
-                        </span>
-                      ) : (
-                        <span
-                          className="badge-live"
-                          style={{
-                            background: 'rgba(249, 115, 22, 0.15)',
-                            color: '#fb923c',
-                            borderColor: 'rgba(249, 115, 22, 0.3)'
-                          }}
-                        >
-                          <span className="pulsing-dot" style={{ background: '#f97316' }}></span> Setup Required
-                        </span>
-                      )}
+                      <h2 style={{ fontSize: 18, fontWeight: 800 }}>YouTube Channel: PDX</h2>
+                      <span className="badge-live">
+                        <span className="pulsing-dot"></span> Live API Connected
+                      </span>
                     </div>
                     <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>
-                      {analytics.channel_info?.status === 'connected'
-                        ? 'Automated 9:16 Shorts pipeline with custom layout framing and 20–30m batch interval scheduling.'
-                        : 'Connect your YouTube channel using free Google Cloud credentials to upload and schedule Shorts automatically.'}
+                      Automated 9:16 Shorts pipeline with custom layout framing and 20–30m batch interval scheduling.
                     </p>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  {analytics.channel_info?.status !== 'connected' ? (
-                    <button
-                      className="btn btn-primary btn-sm"
-                      onClick={() => setShowConnectModal(true)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)'
-                      }}
-                    >
-                      <Key size={14} /> Connect YouTube Channel
-                    </button>
-                  ) : (
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={handleDisconnectChannel}
-                      title="Disconnect or switch YouTube account"
-                      style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                    >
-                      <Unlink size={14} /> Disconnect
-                    </button>
-                  )}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setActiveTab('discover')}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, borderColor: 'rgba(139, 92, 246, 0.45)', color: '#c4b5fd' }}
+                  >
+                    <Search size={14} /> Discover Best Videos
+                  </button>
                   <button
                     className="btn btn-secondary btn-sm"
                     onClick={() => { setUploadMode('youtube'); setActiveTab('upload'); }}
@@ -945,7 +1188,7 @@ export default function App() {
                     <Link2 size={14} /> Import from YouTube
                   </button>
                   <a
-                    href={analytics.channel_info?.target_url || "https://studio.youtube.com"}
+                    href="https://studio.youtube.com"
                     target="_blank"
                     rel="noreferrer"
                     className="btn btn-secondary btn-sm"
@@ -996,7 +1239,7 @@ export default function App() {
 
                 <div className="metric-card">
                   <div className="metric-header">
-                    <span className="metric-title">YouTube Published</span>
+                    <span className="metric-title">PDX Published</span>
                     <Youtube size={18} color="var(--accent-green)" />
                   </div>
                   <div className="metric-value">{analytics.completed_uploads}</div>
@@ -1123,11 +1366,11 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Growth & Algorithm Tips */}
+                  {/* Growth & Algorithm Tips for PDX */}
                   <div className="dashboard-panel">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <TrendingUp size={16} color="var(--accent-orange)" />
-                      <h3 style={{ fontSize: 15, fontWeight: 700 }}>YouTube Shorts Strategy</h3>
+                      <h3 style={{ fontSize: 15, fontWeight: 700 }}>PDX Channel Strategy</h3>
                     </div>
 
                     <div className="tip-box">
@@ -1140,6 +1383,248 @@ export default function App() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* TAB: YOUTUBE BEST VIDEO DISCOVERY ALGORITHM */}
+          {activeTab === 'discover' && (
+            <div>
+              <div className="page-header">
+                <div>
+                  <h1 className="page-title">🔍 Discover Best YouTube Videos to Clip</h1>
+                  <p className="page-subtitle">
+                    Smart 5-dimension ranking algorithm scans YouTube to find high-retention, spoken-word long-form videos ideal for viral 1080p Shorts.
+                  </p>
+                </div>
+              </div>
+
+              {/* Search & Filter Panel */}
+              <div className="dashboard-panel" style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
+                  <div style={{ flex: '1 1 360px' }}>
+                    <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                      Topic, Niche, Guest, or Podcast Keyword
+                    </label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="e.g. podcast mindset discipline, AI explained, entrepreneur interview..."
+                      value={discoverQuery}
+                      onChange={(e) => setDiscoverQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleRunDiscovery()}
+                    />
+                  </div>
+
+                  <div style={{ width: 170 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                      Min Video Length
+                    </label>
+                    <select
+                      className="form-control"
+                      value={discoverMinMinutes}
+                      onChange={(e) => setDiscoverMinMinutes(Number(e.target.value))}
+                    >
+                      <option value={5}>5+ minutes</option>
+                      <option value={10}>10+ minutes (Recommended)</option>
+                      <option value={20}>20+ minutes (Podcasts)</option>
+                      <option value={30}>30+ minutes (Deep-Dive)</option>
+                    </select>
+                  </div>
+
+                  <div style={{ width: 195 }}>
+                    <label style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: 6 }}>
+                      Rank Videos By
+                    </label>
+                    <select
+                      className="form-control"
+                      value={discoverSortBy}
+                      onChange={(e) => setDiscoverSortBy(e.target.value)}
+                    >
+                      <option value="clip_potential">🔥 Best Clip Potential</option>
+                      <option value="max_views">👀 Highest Views (Viral Hype)</option>
+                    </select>
+                  </div>
+
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => handleRunDiscovery()}
+                    disabled={isDiscovering}
+                    style={{ height: 42, display: 'flex', alignItems: 'center', gap: 8 }}
+                  >
+                    <Search size={16} />
+                    {isDiscovering ? 'Scanning & Ranking...' : 'Find Best Videos'}
+                  </button>
+                </div>
+
+                {/* Preset Niche Chips */}
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>
+                    ⚡ Quick Viral Niches (1-Click Search):
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {discoverPresets.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className={`btn-chip ${discoverQuery === preset.query ? 'selected' : ''}`}
+                        onClick={() => handleRunDiscovery(preset.query)}
+                        disabled={isDiscovering}
+                        title={preset.description}
+                      >
+                        {preset.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Discovery Results Summary */}
+              {discoverStats && (
+                <div style={{ marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>
+                    Scanned <strong>{discoverStats.total_scanned}</strong> YouTube videos • Filtered out Shorts/music • Ranked top <strong>{discoverResults.length}</strong> clippable long-form matches
+                  </span>
+                </div>
+              )}
+
+              {/* Results Grid */}
+              {isDiscovering ? (
+                <div className="dashboard-panel" style={{ textAlign: 'center', padding: 48 }}>
+                  <RefreshCw size={32} className="spin" style={{ margin: '0 auto 14px', color: '#3b82f6' }} />
+                  <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Running Clip-Potential Algorithm...</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+                    Evaluating duration, audience reach, spoken-word density, and viral hook signals.
+                  </p>
+                </div>
+              ) : discoverResults.length === 0 ? (
+                <div className="dashboard-panel" style={{ textAlign: 'center', padding: 48 }}>
+                  <TrendingUp size={36} style={{ margin: '0 auto 12px', color: '#8b5cf6' }} />
+                  <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Find Your Next Viral Source Video</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 13, maxWidth: 520, margin: '0 auto 18px' }}>
+                    Choose a preset niche above or type any topic and click <strong>Find Best Videos</strong>. Our algorithm scores YouTube videos from 0–100 based on clip yield and viral potential.
+                  </p>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => handleRunDiscovery()}
+                  >
+                    <Zap size={16} /> Scan Top Podcast & Mindset Videos Now
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 18 }}>
+                  {discoverResults.map((vid, idx) => {
+                    const mins = Math.floor(vid.duration / 60);
+                    const secs = vid.duration % 60;
+                    const durStr = `${mins}:${secs.toString().padStart(2, '0')}`;
+                    const viewsStr = vid.view_count >= 1000000
+                      ? `${(vid.view_count / 1000000).toFixed(1)}M views`
+                      : vid.view_count >= 1000
+                      ? `${(vid.view_count / 1000).toFixed(1)}K views`
+                      : `${vid.view_count} views`;
+
+                    return (
+                      <div
+                        key={vid.id}
+                        className="dashboard-panel"
+                        style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+                      >
+                        <div>
+                          {/* Thumbnail + Badges */}
+                          <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: '#09090b' }}>
+                            <img
+                              src={vid.thumbnail}
+                              alt={vid.title}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                            <div style={{
+                              position: 'absolute',
+                              top: 10,
+                              left: 10,
+                              background: idx < 3 ? 'linear-gradient(135deg, #f59e0b, #ef4444)' : 'rgba(15, 23, 42, 0.88)',
+                              color: '#fff',
+                              padding: '4px 10px',
+                              borderRadius: 20,
+                              fontSize: 12,
+                              fontWeight: 800,
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+                            }}>
+                              {idx === 0 ? '🏆 ' : '🔥 '}Score: {vid.clip_potential_score}/100
+                            </div>
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 8,
+                              right: 8,
+                              background: 'rgba(0,0,0,0.82)',
+                              color: '#fff',
+                              padding: '3px 7px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700
+                            }}>
+                              {durStr}
+                            </div>
+                          </div>
+
+                          <div style={{ padding: 16 }}>
+                            <h3 style={{
+                              fontSize: 14,
+                              fontWeight: 700,
+                              lineHeight: 1.35,
+                              marginBottom: 6,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
+                              {vid.title}
+                            </h3>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
+                              {vid.channel} • {viewsStr} • <strong style={{ color: '#34d399' }}>~{vid.estimated_clips} Shorts</strong>
+                            </div>
+
+                            {/* Reason Chips */}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                              {vid.reasons.map((r, rIdx) => (
+                                <span
+                                  key={rIdx}
+                                  style={{
+                                    fontSize: 11,
+                                    padding: '3px 8px',
+                                    borderRadius: 6,
+                                    background: 'rgba(59, 130, 246, 0.14)',
+                                    color: '#93c5fd',
+                                    border: '1px solid rgba(59, 130, 246, 0.25)'
+                                  }}
+                                >
+                                  {r}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ padding: '0 16px 16px', display: 'flex', gap: 8 }}>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            style={{ flex: 1, justifyContent: 'center' }}
+                            onClick={() => handleDiscoverImportAndClip(vid, true)}
+                            disabled={isProcessing}
+                          >
+                            <Zap size={14} /> Import & Auto-Clip
+                          </button>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => handleDiscoverImportAndClip(vid, false)}
+                            title="Open in YouTube Downloader to inspect resolutions"
+                          >
+                            <Link2 size={14} /> Inspect
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -1286,75 +1771,15 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Comprehensive Real-Time Pipeline Progress Dashboard */}
+                {/* Pipeline Progress Display */}
                 {isProcessing && (
-                  <div className="pipeline-dashboard-card">
-                    <div className="pipeline-top-info">
-                      <div>
-                        <span className="progress-badge-active" style={{ marginBottom: 6 }}>
-                          <span className="pulse-dot-blue"></span> Active Pipeline
-                        </span>
-                        <div className="pipeline-video-title">
-                          🎬 {activeJob ? activeJob.title : (uploadFile ? uploadFile.name : 'Processing Video')}
-                        </div>
-                      </div>
-                      <div className="pipeline-percentage">
-                        {uploadProgress}%
-                      </div>
+                  <div style={{ background: 'var(--bg-secondary)', padding: 16, borderRadius: 8, marginTop: 18, border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                      <span style={{ color: '#60a5fa', fontWeight: 600 }}>{processingStatus}</span>
+                      <span style={{ fontWeight: 700 }}>{uploadProgress}%</span>
                     </div>
-
-                    <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 12 }}>
-                      {processingStatus}
-                    </p>
-
-                    <div className="progress-bar-track" style={{ height: 10 }}>
-                      <div
-                        className="progress-bar-fill"
-                        style={{ width: `${Math.max(uploadProgress, 4)}%` }}
-                      ></div>
-                    </div>
-
-                    {/* 4-Stage Visual Stepper */}
-                    <div className="pipeline-stepper">
-                      <div className={`stepper-card ${uploadProgress >= 35 ? 'completed' : 'active'}`}>
-                        <div className="stepper-top-row">
-                          <span>STAGE 1</span>
-                          <span>{uploadProgress >= 35 ? '✓ Done' : 'In Progress'}</span>
-                        </div>
-                        <div className="stepper-title">
-                          {uploadMode === 'youtube' ? 'Download Stream' : 'File Upload'}
-                        </div>
-                        <div className="stepper-subtitle">
-                          {uploadMode === 'youtube' ? `${youtubeResolution} Video` : (activeJob?.loadedMB ? `${activeJob.loadedMB} / ${activeJob.totalMB} MB` : 'Up to 1.5 GB')}
-                        </div>
-                      </div>
-
-                      <div className={`stepper-card ${uploadProgress >= 60 ? 'completed' : (uploadProgress >= 35 ? 'active' : 'pending')}`}>
-                        <div className="stepper-top-row">
-                          <span>STAGE 2</span>
-                          <span>{uploadProgress >= 60 ? '✓ Done' : (uploadProgress >= 35 ? 'In Progress' : 'Pending')}</span>
-                        </div>
-                        <div className="stepper-title">Audio Track</div>
-                        <div className="stepper-subtitle">16kHz Mono WAV</div>
-                      </div>
-
-                      <div className={`stepper-card ${uploadProgress >= 85 ? 'completed' : (uploadProgress >= 60 ? 'active' : 'pending')}`}>
-                        <div className="stepper-top-row">
-                          <span>STAGE 3</span>
-                          <span>{uploadProgress >= 85 ? '✓ Done' : (uploadProgress >= 60 ? 'In Progress' : 'Pending')}</span>
-                        </div>
-                        <div className="stepper-title">Faster-Whisper</div>
-                        <div className="stepper-subtitle">INT8 Timestamps</div>
-                      </div>
-
-                      <div className={`stepper-card ${uploadProgress >= 100 ? 'completed' : (uploadProgress >= 85 ? 'active' : 'pending')}`}>
-                        <div className="stepper-top-row">
-                          <span>STAGE 4</span>
-                          <span>{uploadProgress >= 100 ? '✓ Done' : (uploadProgress >= 85 ? 'In Progress' : 'Pending')}</span>
-                        </div>
-                        <div className="stepper-title">Viral Moments</div>
-                        <div className="stepper-subtitle">6-Dimension Scores</div>
-                      </div>
+                    <div className="progress-bar-container">
+                      <div className="progress-bar" style={{ width: `${uploadProgress}%` }}></div>
                     </div>
                   </div>
                 )}
@@ -1648,7 +2073,7 @@ export default function App() {
                       </div>
 
                       <div className="form-group">
-                        <label>YouTube Short Title (under 60 chars with #Shorts for mobile discovery)</label>
+                        <label>YouTube Short Title (Clean high-CTR hook title, under 60 chars)</label>
                         <input
                           type="text"
                           className="form-control"
@@ -1658,16 +2083,53 @@ export default function App() {
                       </div>
 
                       <div className="form-group">
-                        <label>YouTube High-Engagement Description & Hashtags</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <label style={{ margin: 0, fontWeight: 700 }}>PDX High-Engagement Description &amp; Hashtags</label>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={handleGenerateEnrichedMetadata}
+                            disabled={isGeneratingMetadata}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              fontSize: 11,
+                              padding: '4px 12px',
+                              borderColor: '#38bdf8',
+                              color: '#67e8f9',
+                              background: 'rgba(6, 182, 212, 0.12)'
+                            }}
+                            title="Auto-detect who is in the video, include original YouTube source info & generate high-reach hashtags"
+                          >
+                            <Sparkles size={13} color="#38bdf8" />
+                            {isGeneratingMetadata ? 'Enriching with YouTube Info...' : '✨ AI Enrich from YouTube & Video Info'}
+                          </button>
+                        </div>
                         <textarea
                           className="form-control"
-                          style={{ minHeight: 140 }}
+                          style={{ minHeight: 170, fontSize: 12, lineHeight: 1.5, fontFamily: 'Consolas, monospace' }}
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
+                          placeholder="PDX High-Engagement Description with YouTube source credit, who is in the video, takeaways, and hashtags..."
                         />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                            ⚡ Describes who/what is in the video, YouTube source credits, and targeted entity hashtags to maximize viewer reach.
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={handleSaveMetadataOnly}
+                            style={{ fontSize: 11, padding: '3px 10px' }}
+                            title="Save Title and Description to database"
+                          >
+                            Save Metadata
+                          </button>
+                        </div>
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                         <div className="form-group">
                           <label>Vertical 9:16 Layout</label>
                           <select
@@ -1675,9 +2137,24 @@ export default function App() {
                             value={editLayout}
                             onChange={(e) => setEditLayout(e.target.value)}
                           >
-                            <option value="auto">⚡ Auto-Detect (Best for Whiteboards & Charts)</option>
-                            <option value="blur_background">🌟 Blurred Background (Fit & Center 9:16)</option>
-                            <option value="smart_crop">🎯 Smart Crop (Speaker Centered 9:16)</option>
+                            <option value="auto">⚡ Auto-Detect</option>
+                            <option value="blur_background">🌟 Blurred Background</option>
+                            <option value="smart_crop">🎯 Smart Crop</option>
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Film size={13} color="#60a5fa" /> Video Quality
+                          </label>
+                          <select
+                            className="form-control"
+                            value={editQualityPreset}
+                            onChange={(e) => setEditQualityPreset(e.target.value)}
+                          >
+                            <option value="high">🎬 1080p Full HD (High)</option>
+                            <option value="ultra">💎 1080p Ultra Crisp (Studio)</option>
+                            <option value="balanced">⚡ 1080p Balanced (Fast)</option>
                           </select>
                         </div>
 
@@ -1689,9 +2166,88 @@ export default function App() {
                             onChange={(e) => setPrivacyStatus(e.target.value)}
                           >
                             <option value="public">Public</option>
-                            <option value="unlisted">Unlisted (Verify First)</option>
+                            <option value="unlisted">Unlisted</option>
                             <option value="private">Private</option>
                           </select>
+                        </div>
+                      </div>
+
+                      {/* Popular Subtitle Styles Picker */}
+                      <div className="form-group">
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                          <Type size={14} color="#f59e0b" /> Popular Creator Subtitle Style
+                        </label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
+                          {subtitleStyles.map((st) => {
+                            const isSelected = editSubtitleStyle === st.id;
+                            return (
+                              <button
+                                key={st.id}
+                                type="button"
+                                onClick={() => setEditSubtitleStyle(st.id)}
+                                title={st.description}
+                                style={{
+                                  background: isSelected ? 'rgba(59, 130, 246, 0.16)' : 'var(--bg-secondary)',
+                                  border: isSelected ? '1.5px solid #3b82f6' : '1px solid var(--border-color)',
+                                  borderRadius: 10,
+                                  padding: '8px 10px',
+                                  textAlign: 'left',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease'
+                                }}
+                              >
+                                <div style={{
+                                  background: st.preview_bg,
+                                  borderRadius: 6,
+                                  padding: '4px 8px',
+                                  marginBottom: 6,
+                                  textAlign: 'center',
+                                  fontWeight: 800,
+                                  fontSize: 11,
+                                  letterSpacing: '0.4px',
+                                  color: st.preview_text,
+                                  border: '1px solid rgba(255,255,255,0.08)'
+                                }}>
+                                  {st.uppercase ? 'WAIT ' : 'Wait '}
+                                  <span style={{ color: st.preview_accent }}>
+                                    {st.uppercase ? 'THIS!' : 'this!'}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: isSelected ? '#93c5fd' : '#f0f3fa' }}>
+                                  {st.name}
+                                </div>
+                              </button>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => setEditSubtitleStyle('none')}
+                            style={{
+                              background: editSubtitleStyle === 'none' ? 'rgba(239, 68, 68, 0.14)' : 'var(--bg-secondary)',
+                              border: editSubtitleStyle === 'none' ? '1.5px solid #ef4444' : '1px solid var(--border-color)',
+                              borderRadius: 10,
+                              padding: '8px 10px',
+                              textAlign: 'left',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <div style={{
+                              background: '#09090b',
+                              borderRadius: 6,
+                              padding: '4px 8px',
+                              marginBottom: 6,
+                              textAlign: 'center',
+                              fontWeight: 600,
+                              fontSize: 11,
+                              color: '#71717a',
+                              border: '1px solid rgba(255,255,255,0.08)'
+                            }}>
+                              (Clean Video)
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: editSubtitleStyle === 'none' ? '#fca5a5' : 'var(--text-secondary)' }}>
+                              No Subtitles
+                            </div>
+                          </button>
                         </div>
                       </div>
 
@@ -1733,7 +2289,7 @@ export default function App() {
                           disabled={isPublishing || !selectedClip.output_path}
                         >
                           <Youtube size={16} />
-                          {isPublishing ? 'Uploading to YouTube...' : (singleScheduleTime ? 'Schedule to YouTube' : 'Publish to YouTube')}
+                          {isPublishing ? 'Uploading to PDX...' : (singleScheduleTime ? 'Schedule to YouTube' : 'Publish to YouTube')}
                         </button>
                       </div>
                     </div>
@@ -1750,7 +2306,7 @@ export default function App() {
                 <div>
                   <h2 style={{ fontSize: 18, fontWeight: 700 }}>YouTube Shorts Publishing Log</h2>
                   <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-                    Audit trail of all published and scheduled Shorts on channel: <strong>{analytics.channel_info?.name || 'Connected Channel'}</strong>
+                    Audit trail of all published and scheduled Shorts on channel: <strong>PDX</strong>
                   </p>
                 </div>
                 <button className="btn btn-secondary btn-sm" onClick={fetchYouTubeUploads}>
@@ -1835,6 +2391,401 @@ export default function App() {
               )}
             </div>
           )}
+
+          {/* TAB 6: J.A.R.V.I.S. AI CO-PILOT & OS CONTROLLER */}
+          {activeTab === 'jarvis' && (
+            <div>
+              {/* Top HUD Banner */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <h2 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '0.5px', background: 'linear-gradient(135deg, #22d3ee, #38bdf8, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', margin: 0 }}>
+                      J.A.R.V.I.S. Autonomous AI Controller
+                    </h2>
+                    <span style={{ background: 'rgba(34, 211, 238, 0.15)', border: '1px solid rgba(34, 211, 238, 0.4)', color: '#38bdf8', fontSize: 11, fontWeight: 800, padding: '3px 8px', borderRadius: 12 }}>
+                      MARK VII • SYSTEM LINKED
+                    </span>
+                  </div>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 4 }}>
+                    Intelligent Windows Workstation Commander &amp; ViralCut AI Autonomous Producer
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', background: 'var(--bg-secondary)', padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                    <input
+                      type="checkbox"
+                      checked={jarvisVoiceOutput}
+                      onChange={(e) => setJarvisVoiceOutput(e.target.checked)}
+                      style={{ accentColor: '#22d3ee' }}
+                    />
+                    <span>🔊 J.A.R.V.I.S. Voice Speech (TTS)</span>
+                  </label>
+                  <button className="btn btn-secondary btn-sm" onClick={() => { fetchJarvisVitals(); fetchJarvisCommands(); }}>
+                    <RefreshCw size={14} /> Refresh HUD
+                  </button>
+                </div>
+              </div>
+
+              {/* Grid: Arc Reactor Center & Live Hardware Vitals */}
+              <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 20, marginBottom: 20 }}>
+                {/* Arc Reactor Voice Hub */}
+                <div className="arc-reactor-box">
+                  <div
+                    className={`arc-reactor-core ${isJarvisListening ? 'listening' : (jarvisStatus.includes('TRANSMITTING') ? 'speaking' : '')}`}
+                    onClick={toggleJarvisMic}
+                    title="Click Arc Reactor to Speak"
+                  >
+                    <div className="arc-ring-outer"></div>
+                    <div className="arc-ring-mid"></div>
+                    <div className="arc-center-orb">
+                      {isJarvisListening ? <Mic size={22} color="#fff" /> : 'JARVIS'}
+                    </div>
+                  </div>
+
+                  <div style={{ fontWeight: 800, fontSize: 12, letterSpacing: '1px', color: isJarvisListening ? '#ef4444' : '#22d3ee', textTransform: 'uppercase', marginBottom: 8 }}>
+                    {jarvisStatus}
+                  </div>
+
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center', marginBottom: 14 }}>
+                    {isJarvisListening ? 'Speak your natural command into your microphone...' : 'Click the Arc Reactor or Mic to activate voice command recognition.'}
+                  </p>
+
+                  {/* Hardware Quick Action Buttons */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, width: '100%' }}>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => executeJarvisDirectAction('screenshot')}
+                      title="Capture entire workstation screen"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11 }}
+                    >
+                      <Camera size={13} color="#38bdf8" /> Screen
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => executeJarvisDirectAction('volume_mute')}
+                      title="Toggle system mute"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11 }}
+                    >
+                      <VolumeX size={13} color="#f87171" /> Mute
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => executeJarvisDirectAction('volume_up')}
+                      title="Increase volume"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11 }}
+                    >
+                      <Volume2 size={13} color="#34d399" /> Vol +
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => executeJarvisDirectAction('volume_down')}
+                      title="Decrease volume"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11 }}
+                    >
+                      <Volume2 size={13} color="#fbbf24" /> Vol -
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => executeJarvisDirectAction('minimize_all')}
+                      title="Minimize all windows to desktop"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11 }}
+                    >
+                      <Monitor size={13} color="#a78bfa" /> Desktop
+                    </button>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => executeJarvisDirectAction('lock')}
+                      title="Lock Windows Workstation"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                    >
+                      <Lock size={13} color="#ef4444" /> Lock PC
+                    </button>
+                  </div>
+                </div>
+
+                {/* Real-Time Hardware & Studio Vitals HUD */}
+                <div style={{ background: 'var(--bg-secondary)', border: '1px solid rgba(34, 211, 238, 0.25)', borderRadius: 14, padding: 20, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: '0.8px', color: '#67e8f9', textTransform: 'uppercase' }}>
+                        ● LIVE HARDWARE TELEMETRY ({jarvisVitals?.os?.platform || 'Windows 64-bit'})
+                      </span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                        Host: {jarvisVitals?.os?.hostname || 'LOCAL-PC'} • Uptime: {jarvisVitals?.os?.uptime_hours || 0}h
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+                      {/* CPU Stat */}
+                      <div style={{ background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#38bdf8', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                          <Cpu size={14} /> CPU Load
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: (jarvisVitals?.cpu?.percent || 0) > 85 ? '#ef4444' : '#f8fafc' }}>
+                          {jarvisVitals?.cpu?.percent ?? 0}%
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                          {jarvisVitals?.cpu?.physical_cores || 4}C / {jarvisVitals?.cpu?.logical_cores || 8}T
+                        </div>
+                      </div>
+
+                      {/* RAM Stat */}
+                      <div style={{ background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#a78bfa', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                          <Activity size={14} /> RAM Usage
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: (jarvisVitals?.memory?.percent || 0) > 85 ? '#ef4444' : '#f8fafc' }}>
+                          {jarvisVitals?.memory?.percent ?? 0}%
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                          {jarvisVitals?.memory?.used_gb ?? 0} / {jarvisVitals?.memory?.total_gb ?? 0} GB
+                        </div>
+                      </div>
+
+                      {/* Primary Disk */}
+                      <div style={{ background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#34d399', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                          <HardDrive size={14} /> Storage (D:)
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: '#f8fafc' }}>
+                          {jarvisVitals?.disk?.free_gb ?? 0} GB
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                          Free of {jarvisVitals?.disk?.total_gb ?? 0} GB
+                        </div>
+                      </div>
+
+                      {/* Battery / Power */}
+                      <div style={{ background: 'var(--bg-primary)', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border-color)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#fbbf24', fontSize: 12, fontWeight: 700, marginBottom: 4 }}>
+                          <Zap size={14} /> Power Mode
+                        </div>
+                        <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc' }}>
+                          {jarvisVitals?.battery?.percent !== null && jarvisVitals?.battery?.percent !== undefined ? `${jarvisVitals?.battery?.percent}%` : 'AC Power'}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#34d399', marginTop: 2 }}>
+                          {jarvisVitals?.battery?.plugged ? '⚡ Continuous Power' : '🔋 On Battery'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ViralCut AI Studio Bridge Card */}
+                  <div style={{ background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(59, 130, 246, 0.12))', border: '1px solid rgba(34, 211, 238, 0.3)', borderRadius: 10, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontWeight: 700, color: '#67e8f9', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Bot size={15} /> ViralCut AI Studio Engine Connected
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                        Target Channel: <strong>PDX</strong> • 1080p Full HD Engine Active • Dynamic Multi-Shot Smart Crop Enabled
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setActiveTab('editor')}
+                        style={{ fontSize: 11, borderColor: '#38bdf8' }}
+                      >
+                        Shorts Editor ↗
+                      </button>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={() => { selectAllClips(); setShowScheduleModal(true); }}
+                        style={{ fontSize: 11, background: 'linear-gradient(135deg, #06b6d4, #2563eb)' }}
+                      >
+                        ⚡ Batch Scheduler
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Middle Section: Natural Language & Voice Conversation Stream */}
+              <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 14, padding: 18, marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <MessageSquare size={16} color="#38bdf8" />
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>Live Command Console &amp; Conversational Stream</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    Type or speak naturally — ask J.A.R.V.I.S. to operate ViralCut AI or manage your Windows PC.
+                  </span>
+                </div>
+
+                {/* Message Log */}
+                <div className="jarvis-chat-stream">
+                  {jarvisMessages.map((msg, idx) => (
+                    <div key={idx} className={`jarvis-bubble ${msg.role}`}>
+                      <div className="jarvis-bubble-meta">
+                        {msg.role === 'jarvis' ? '⚡ J.A.R.V.I.S.' : '👤 YOU'} • {msg.time || ''}
+                      </div>
+                      <div style={{ whiteSpace: 'pre-line' }}>{msg.text}</div>
+                      {msg.imgUrl && (
+                        <div style={{ marginTop: 8 }}>
+                          <a href={msg.imgUrl} target="_blank" rel="noreferrer">
+                            <img
+                              src={msg.imgUrl}
+                              alt="Screenshot Preview"
+                              style={{ maxWidth: '100%', maxHeight: 220, borderRadius: 8, border: '1px solid rgba(34, 211, 238, 0.4)' }}
+                            />
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Quick Action Suggestion Chips */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '12px 0' }}>
+                  {[
+                    "Take a screenshot of my screen",
+                    "How do I increase my 40.9% watch rate?",
+                    "Describe who is in the video & YouTube source info",
+                    "Focus Studio: switch to shorts editor",
+                    "Auto-discover GTA 6 viral gameplay videos",
+                    "Launch 1080p batch scheduler",
+                    "Mute system volume",
+                    "What is my CPU and memory usage?"
+                  ].map((chip, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className="btn-chip"
+                      style={{ fontSize: 11, padding: '4px 10px', background: 'rgba(34, 211, 238, 0.08)', borderColor: 'rgba(34, 211, 238, 0.25)', color: '#bae6fd' }}
+                      onClick={() => handleJarvisSend(chip)}
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Input Bar */}
+                <form
+                  onSubmit={(e) => { e.preventDefault(); handleJarvisSend(); }}
+                  style={{ display: 'flex', gap: 10, marginTop: 8 }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={toggleJarvisMic}
+                    style={{
+                      background: isJarvisListening ? 'rgba(239, 68, 68, 0.2)' : 'var(--bg-primary)',
+                      borderColor: isJarvisListening ? '#ef4444' : 'var(--border-color)',
+                      color: isJarvisListening ? '#ef4444' : '#38bdf8',
+                      padding: '0 16px'
+                    }}
+                    title={isJarvisListening ? "Listening... click to stop" : "Click to speak"}
+                  >
+                    <Mic size={18} />
+                  </button>
+
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Speak or type a command: 'take a screenshot', 'mute audio', 'open batch scheduler', 'lock PC'..."
+                    value={jarvisInput}
+                    onChange={(e) => setJarvisInput(e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={!jarvisInput.trim()}
+                    style={{ background: 'linear-gradient(135deg, #06b6d4, #0284c7)', border: 'none', padding: '0 20px' }}
+                  >
+                    <Send size={16} /> Send
+                  </button>
+                </form>
+              </div>
+
+              {/* Bottom Section: Custom Commands & Multi-Action Routines ("Costume Commands") */}
+              <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 14, padding: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Zap size={18} color="#eab308" />
+                      <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
+                        Custom Macro Routines ("Costume Commands")
+                      </h3>
+                      <span style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#fbbf24', fontSize: 10, fontWeight: 800, padding: '2px 8px', borderRadius: 10 }}>
+                        {jarvisCommands.length} MACROS LOADED
+                      </span>
+                    </div>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 4 }}>
+                      Speak or click custom trigger routines that execute chained multi-step actions across Windows and ViralCut AI.
+                    </p>
+                  </div>
+
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={handleCreateJarvisMacro}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, borderColor: '#eab308', color: '#fbbf24' }}
+                  >
+                    <Plus size={14} /> + Create New Routine
+                  </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
+                  {jarvisCommands.map((cmd) => (
+                    <div
+                      key={cmd.id}
+                      style={{
+                        background: 'var(--bg-primary)',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: 10,
+                        padding: 14,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between'
+                      }}
+                    >
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                          <span style={{ fontWeight: 800, fontSize: 13, color: '#f0fdf4' }}>{cmd.name}</span>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#34d399', background: 'rgba(16, 185, 129, 0.15)', padding: '2px 6px', borderRadius: 6 }}>
+                            READY
+                          </span>
+                        </div>
+                        <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 10px 0', lineHeight: 1.4 }}>
+                          {cmd.description}
+                        </p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 12 }}>
+                          {(cmd.triggers || []).map((t, idx) => (
+                            <span key={idx} style={{ fontSize: 10, color: '#93c5fd', background: 'rgba(59, 130, 246, 0.15)', padding: '2px 6px', borderRadius: 4 }}>
+                              "{t}"
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleDeleteJarvisMacro(cmd.id)}
+                          style={{ color: '#f87171', border: 'none', background: 'transparent', padding: 4 }}
+                          title="Delete macro routine"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() => executeJarvisCustomMacro(cmd.id)}
+                          style={{ background: 'linear-gradient(135deg, #0ea5e9, #3b82f6)', fontSize: 11, padding: '5px 12px' }}
+                        >
+                          ⚡ Run Routine
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
@@ -1846,7 +2797,7 @@ export default function App() {
               <div>
                 <h2 style={{ fontSize: 18, fontWeight: 800 }}>📅 Automated YouTube Batch Scheduler</h2>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>
-                  Publish {selectedClipIds.length > 0 ? selectedClipIds.length : clips.length} Shorts to <strong>{analytics.channel_info?.name || 'Your YouTube Channel'}</strong> on an automatic schedule.
+                  Publish {selectedClipIds.length > 0 ? selectedClipIds.length : clips.length} Shorts to <strong>PDX</strong> on an automatic schedule.
                 </p>
               </div>
               <button
@@ -1858,81 +2809,68 @@ export default function App() {
               </button>
             </div>
 
-            {/* Live Batch Upload Progress Tracker */}
-            {isBatchPublishing && (
-              <div style={{ background: 'var(--bg-secondary)', padding: 16, borderRadius: 10, marginBottom: 18, border: '1px solid rgba(59, 130, 246, 0.4)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="pulse-dot-blue"></span>
-                    <strong style={{ fontSize: 13, color: '#60a5fa' }}>{batchProgressText}</strong>
-                  </div>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: '#fff' }}>
-                    {activeJob ? activeJob.percent : 0}%
-                  </span>
-                </div>
-
-                <div className="progress-bar-track" style={{ height: 8, marginBottom: 12 }}>
-                  <div
-                    className="progress-bar-fill"
-                    style={{ width: `${Math.max(activeJob ? activeJob.percent : 0, 4)}%` }}
-                  ></div>
-                </div>
-
-                {activeJob && activeJob.subItems && (
-                  <div className="batch-queue-container">
-                    {activeJob.subItems.map((item, idx) => (
-                      <div key={idx} className={`batch-queue-item ${item.status}`}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
-                          <span style={{ fontWeight: 700, color: item.status === 'completed' ? '#10b981' : (item.status === 'uploading' ? '#60a5fa' : 'var(--text-muted)') }}>
-                            #{idx + 1}
-                          </span>
-                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {item.title}
-                          </span>
-                        </div>
-                        <div>
-                          {item.status === 'completed' && <span style={{ color: '#10b981', fontWeight: 600 }}>✓ Uploaded</span>}
-                          {item.status === 'uploading' && <span style={{ color: '#60a5fa', fontWeight: 600 }}>⚡ Uploading...</span>}
-                          {item.status === 'pending' && <span style={{ color: 'var(--text-muted)' }}>⏳ Waiting</span>}
-                          {item.status === 'failed' && <span style={{ color: '#ef4444', fontWeight: 600 }}>⚠️ Failed</span>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Vertical 9:16 Framing Layout Setting */}
+            {/* NEW: Crop / Vertical 9:16 Framing, Subtitle Style & 1080p Quality in Schedule Section */}
             <div className="form-group" style={{ marginBottom: 16, background: 'var(--bg-secondary)', padding: '12px 14px', borderRadius: 10, border: '1px solid var(--border-color)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 <Layers size={16} color="#3b82f6" />
                 <label style={{ margin: 0, fontWeight: 700, color: '#f0f3fa' }}>
-                  Vertical 9:16 Crop & Framing Layout
+                  1080p Framing Layout & Popular Subtitle Style
                 </label>
               </div>
               <select
                 className="form-control"
                 value={batchLayoutMode}
                 onChange={(e) => setBatchLayoutMode(e.target.value)}
-                disabled={isBatchPublishing}
+                style={{ marginBottom: 10 }}
               >
                 <option value="auto">⚡ Auto-Detect (Best: Keeps full Whiteboards & Charts visible with fit)</option>
                 <option value="blur_background">🌟 Blurred Background (Fit & Center full 16:9 with ambient glow)</option>
                 <option value="smart_crop">🎯 Smart Crop (Center-fill speaker in 9:16 vertical)</option>
               </select>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
+                    Subtitle Style
+                  </label>
+                  <select
+                    className="form-control"
+                    value={batchSubtitleStyle}
+                    onChange={(e) => setBatchSubtitleStyle(e.target.value)}
+                  >
+                    {subtitleStyles.map((st) => (
+                      <option key={st.id} value={st.id}>{st.name}</option>
+                    ))}
+                    <option value="none">No Subtitles</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
+                    Export Video Quality
+                  </label>
+                  <select
+                    className="form-control"
+                    value={batchQualityPreset}
+                    onChange={(e) => setBatchQualityPreset(e.target.value)}
+                  >
+                    <option value="high">🎬 1080p Full HD (High)</option>
+                    <option value="ultra">💎 1080p Ultra Crisp</option>
+                    <option value="balanced">⚡ 1080p Balanced (Fast)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
                 <input
                   type="checkbox"
                   id="batch-rerender-check"
                   className="batch-checkbox"
                   checked={batchForceRerender}
                   onChange={(e) => setBatchForceRerender(e.target.checked)}
-                  disabled={isBatchPublishing}
                 />
                 <label htmlFor="batch-rerender-check" style={{ fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  Re-render clips with this layout before publishing (ensures uniform layout across all selected)
+                  Re-render selected clips in 1080p HD with this layout & subtitle style before publishing
                 </label>
               </div>
             </div>
@@ -1947,7 +2885,6 @@ export default function App() {
                     type="button"
                     className={`btn-chip ${scheduleInterval === mins ? 'selected' : ''}`}
                     onClick={() => setScheduleInterval(mins)}
-                    disabled={isBatchPublishing}
                   >
                     {mins === 30 ? '30 min (Recommended)' : `${mins} min`}
                   </button>
@@ -1963,7 +2900,6 @@ export default function App() {
                   className="form-control"
                   value={scheduleStartNow ? 'now' : 'later'}
                   onChange={(e) => setScheduleStartNow(e.target.value === 'now')}
-                  disabled={isBatchPublishing}
                 >
                   <option value="now">⚡ First Short Immediate, then every {scheduleInterval}m</option>
                   <option value="later">⏳ All Shorts Scheduled at intervals</option>
@@ -1976,7 +2912,6 @@ export default function App() {
                   className="form-control"
                   value={privacyStatus}
                   onChange={(e) => setPrivacyStatus(e.target.value)}
-                  disabled={isBatchPublishing}
                 >
                   <option value="public">Public (Automatic YouTube Schedule)</option>
                   <option value="unlisted">Unlisted (Review in Studio)</option>
@@ -1992,7 +2927,6 @@ export default function App() {
                 className="form-control"
                 value={customStartTime}
                 onChange={(e) => setCustomStartTime(e.target.value)}
-                disabled={isBatchPublishing}
               />
             </div>
 
@@ -2020,15 +2954,22 @@ export default function App() {
               </div>
             </div>
 
+            {/* Status / Results Section */}
+            {batchProgressText && (
+              <div style={{ background: 'var(--bg-secondary)', padding: 12, borderRadius: 8, marginBottom: 16, border: '1px solid var(--border-color)', fontSize: 13, color: '#60a5fa' }}>
+                {batchProgressText}
+              </div>
+            )}
+
             {batchResults && (
               <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid #10b981', padding: 14, borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
                 <div style={{ fontWeight: 700, color: '#10b981', marginBottom: 6 }}>
-                  🎉 {batchResults.scheduled_count} Shorts Successfully Processed!
+                  🎉 {batchResults.scheduled_count} Shorts Successfully Scheduled to PDX!
                 </div>
                 <div style={{ maxHeight: 120, overflowY: 'auto' }}>
                   {batchResults.results.map((r, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                      <span>{r.title?.slice(0, 36) || 'Short'}...</span>
+                      <span>{r.title.slice(0, 36)}...</span>
                       <a href={r.youtube_url} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', fontWeight: 600 }}>
                         {r.scheduled_publish_at ? `Scheduled (${new Date(r.scheduled_publish_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : 'Live ↗'}
                       </a>
@@ -2054,163 +2995,100 @@ export default function App() {
                 style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
               >
                 <Calendar size={16} />
-                {isBatchPublishing ? 'Uploading & Scheduling...' : `Schedule to ${analytics.channel_info?.name || 'Channel'} (every ${scheduleInterval}m)`}
+                {isBatchPublishing ? 'Uploading & Scheduling...' : `Schedule to PDX Channel (every ${scheduleInterval}m)`}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL: YOUTUBE CHANNEL CONNECT WIZARD */}
-      {showConnectModal && (
-        <div className="modal-overlay" onClick={() => !isConnectingAuth && setShowConnectModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      {/* GLOBAL FLOATING J.A.R.V.I.S. MINI-ORB & SLIDE-OUT DRAWER */}
+      <div
+        className={`jarvis-orb-floating ${isJarvisListening ? 'pulse' : ''}`}
+        onClick={() => setShowJarvisFloating(prev => !prev)}
+        title="Open J.A.R.V.I.S. AI Co-Pilot Drawer"
+      >
+        <Bot size={26} color="#030712" />
+      </div>
+
+      {showJarvisFloating && (
+        <div className="jarvis-drawer-overlay" onClick={() => setShowJarvisFloating(false)}>
+          <div className="jarvis-drawer" onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(34, 211, 238, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                  <Youtube size={22} />
-                </div>
+                <Bot size={20} color="#22d3ee" />
                 <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 800 }}>Connect Your YouTube Channel</h2>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
-                    One-time setup using Google Cloud OAuth credentials to publish Shorts.
-                  </p>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: '#f0fdfa' }}>J.A.R.V.I.S. Mini-HUD</div>
+                  <div style={{ fontSize: 10, color: '#38bdf8' }}>ONLINE • {jarvisStatus}</div>
                 </div>
               </div>
               <button
                 style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                onClick={() => setShowConnectModal(false)}
-                disabled={isConnectingAuth}
+                onClick={() => setShowJarvisFloating(false)}
               >
                 <X size={20} />
               </button>
             </div>
 
-            {connectMessage && (
-              <div style={{
-                background: connectMessage.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
-                border: `1px solid ${connectMessage.type === 'success' ? '#10b981' : '#ef4444'}`,
-                padding: 12,
-                borderRadius: 8,
-                marginBottom: 16,
-                fontSize: 13,
-                color: connectMessage.type === 'success' ? '#10b981' : '#f87171'
-              }}>
-                {connectMessage.text}
-              </div>
-            )}
-
-            {/* Step 1: Upload or Paste client_secrets.json */}
-            <div style={{ background: 'var(--bg-secondary)', padding: 16, borderRadius: 10, border: '1px solid var(--border-color)', marginBottom: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <strong style={{ fontSize: 13 }}>Step 1: Provide client_secrets.json</strong>
-                <a
-                  href="https://console.cloud.google.com/apis/credentials"
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ fontSize: 12, color: '#60a5fa', display: 'flex', alignItems: 'center', gap: 4 }}
-                >
-                  Get from Google Cloud Console <ExternalLink size={12} />
-                </a>
-              </div>
-
-              <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 10 }}>
-                Download your Desktop OAuth 2.0 Client credentials JSON from Google Cloud Console, then choose the file or paste its contents below:
-              </p>
-
-              <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                <input
-                  type="file"
-                  accept=".json,application/json"
-                  onChange={handleSecretsFileUpload}
-                  style={{ fontSize: 12 }}
-                />
-              </div>
-
-              <textarea
-                className="form-control"
-                placeholder='Or paste the JSON contents here: { "installed": { "client_id": "...", ... } }'
-                rows={4}
-                value={secretsJsonInput}
-                onChange={(e) => setSecretsJsonInput(e.target.value)}
-                style={{ fontSize: 11, fontFamily: 'monospace', marginBottom: 10 }}
-              />
-
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={handleSaveClientSecrets}
-                disabled={!secretsJsonInput.trim() || isSavingSecrets}
-              >
-                <Key size={14} /> {isSavingSecrets ? 'Saving...' : 'Save Credentials'}
+            {/* Quick Actions in Mini-Drawer */}
+            <div style={{ padding: '12px 16px', background: 'rgba(3, 7, 18, 0.4)', borderBottom: '1px solid rgba(255, 255, 255, 0.06)', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => executeJarvisDirectAction('screenshot')} style={{ fontSize: 10, padding: '4px 8px' }}>
+                📸 Screen
+              </button>
+              <button className="btn btn-secondary btn-sm" onClick={() => executeJarvisDirectAction('volume_mute')} style={{ fontSize: 10, padding: '4px 8px' }}>
+                🔇 Mute
+              </button>
+              <button className="btn btn-secondary btn-sm" onClick={() => { setActiveTab('editor'); setShowJarvisFloating(false); }} style={{ fontSize: 10, padding: '4px 8px' }}>
+                🎬 Editor
+              </button>
+              <button className="btn btn-secondary btn-sm" onClick={() => { selectAllClips(); setShowScheduleModal(true); setShowJarvisFloating(false); }} style={{ fontSize: 10, padding: '4px 8px' }}>
+                ⚡ Schedule
               </button>
             </div>
 
-            {/* Step 2: One-Click Authorize Channel */}
-            <div style={{ background: 'var(--bg-secondary)', padding: 16, borderRadius: 10, border: '1px solid var(--border-color)', marginBottom: 18 }}>
-              <strong style={{ fontSize: 13, display: 'block', marginBottom: 6 }}>
-                Step 2: Authorize Your YouTube Channel
-              </strong>
-              <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                Click below to open Google's sign-in page. Log in with your YouTube channel's Google account and click "Allow".
-              </p>
+            {/* Chat Stream in Mini-Drawer */}
+            <div className="jarvis-chat-stream" style={{ margin: '14px 16px', flex: 1, minHeight: 0, maxHeight: 'none' }}>
+              {jarvisMessages.map((msg, idx) => (
+                <div key={idx} className={`jarvis-bubble ${msg.role}`}>
+                  <div className="jarvis-bubble-meta">
+                    {msg.role === 'jarvis' ? '⚡ J.A.R.V.I.S.' : '👤 YOU'} • {msg.time || ''}
+                  </div>
+                  <div style={{ whiteSpace: 'pre-line' }}>{msg.text}</div>
+                  {msg.imgUrl && (
+                    <div style={{ marginTop: 6 }}>
+                      <a href={msg.imgUrl} target="_blank" rel="noreferrer">
+                        <img src={msg.imgUrl} alt="Screenshot" style={{ maxWidth: '100%', maxHeight: 140, borderRadius: 6 }} />
+                      </a>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {/* Input in Mini-Drawer */}
+            <div style={{ padding: '14px 16px', borderTop: '1px solid rgba(34, 211, 238, 0.25)' }}>
+              <form onSubmit={(e) => { e.preventDefault(); handleJarvisSend(); }} style={{ display: 'flex', gap: 8 }}>
                 <button
                   type="button"
-                  className="btn btn-primary"
-                  onClick={handleStartConnectAuth}
-                  disabled={isConnectingAuth}
-                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none' }}
+                  className="btn btn-secondary btn-sm"
+                  onClick={toggleJarvisMic}
+                  style={{ color: isJarvisListening ? '#ef4444' : '#38bdf8' }}
                 >
-                  <ShieldCheck size={16} />
-                  {isConnectingAuth ? 'Waiting for Sign-In in Browser...' : 'Authorize YouTube Channel'}
+                  <Mic size={16} />
                 </button>
-                {isConnectingAuth && (
-                  <span style={{ fontSize: 12, color: '#60a5fa', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span className="pulse-dot-blue"></span> Completing OAuth...
-                  </span>
-                )}
-              </div>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Ask J.A.R.V.I.S..."
+                  value={jarvisInput}
+                  onChange={(e) => setJarvisInput(e.target.value)}
+                  style={{ fontSize: 12 }}
+                />
+                <button type="submit" className="btn btn-primary btn-sm" disabled={!jarvisInput.trim()}>
+                  <Send size={14} />
+                </button>
+              </form>
             </div>
-
-            {/* Desktop Terminal Shortcut */}
-            <div style={{ padding: 12, background: 'rgba(59, 130, 246, 0.08)', borderRadius: 8, border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: 12, color: 'var(--text-secondary)' }}>
-              💡 <strong>Quick Shortcut:</strong> You can also just double-click <strong>Connect_YouTube.bat</strong> in your project folder to sign in from your terminal at any time!
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FLOATING REAL-TIME ACTIVE JOB STATUS TRACKER (Visible Across All Tabs) */}
-      {activeJob && (
-        <div className="global-progress-bar-fixed">
-          <div className="progress-header-row">
-            <div className="progress-badge-active">
-              <span className="pulse-dot-blue"></span>
-              {activeJob.type === 'source_upload' && 'Uploading Source Video'}
-              {activeJob.type === 'youtube_download' && 'Downloading YouTube Video'}
-              {activeJob.type === 'youtube_publish' && 'Uploading to YouTube'}
-              {activeJob.type === 'youtube_batch' && 'Batch Uploading to YouTube'}
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 800, color: '#60a5fa' }}>
-              {activeJob.percent}%
-            </span>
-          </div>
-
-          <div className="progress-video-name" title={activeJob.title}>
-            🎬 {activeJob.title}
-          </div>
-
-          <div className="progress-status-detail">
-            {activeJob.statusText}
-          </div>
-
-          <div className="progress-bar-track">
-            <div
-              className="progress-bar-fill"
-              style={{ width: `${Math.max(activeJob.percent, 4)}%` }}
-            ></div>
           </div>
         </div>
       )}
